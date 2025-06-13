@@ -207,6 +207,17 @@ input[type="range"]::-moz-range-thumb {
     color: #495057;
 }
 
+.color-preview {
+    width: 50px;
+    height: 50px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    display: inline-block;
+    margin-right: 10px;
+    background-color: #ffffff;
+    vertical-align: middle;
+}
+
 /* Morse Code Bereich */
 .morse-section {
     background: #e9ecef;

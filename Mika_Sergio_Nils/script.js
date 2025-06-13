@@ -24,6 +24,9 @@ class LightbulbController {
         this.sendMorseBtn = document.getElementById('sendMorse');
         this.morseOutput = document.getElementById('morseOutput');
         this.morseStatus = document.getElementById('morseStatus');
+        this.confirmBrightnessBtn = document.getElementById('confirmBrightness');
+        this.confirmColorBtn = document.getElementById('confirmColor');
+        this.colorPreview = document.getElementById('colorPreview');
         
         this.brightnessValue = document.getElementById('brightnessValue');
         this.hueValue = document.getElementById('hueValue');
@@ -33,10 +36,12 @@ class LightbulbController {
 
     bindEvents() {
         this.powerToggle.addEventListener('change', () => this.togglePower());
-        this.brightnessInput.addEventListener('input', (e) => this.setBrightness(e.target.value));
-        this.hueInput.addEventListener('input', (e) => this.setHue(e.target.value));
-        this.saturationInput.addEventListener('input', (e) => this.setSaturation(e.target.value));
-        this.lightnessInput.addEventListener('input', (e) => this.setLightness(e.target.value));
+        this.brightnessInput.addEventListener('input', () => this.updateLocalDisplay());
+        this.hueInput.addEventListener('input', () => this.updateColorPreview());
+        this.saturationInput.addEventListener('input', () => this.updateColorPreview());
+        this.lightnessInput.addEventListener('input', () => this.updateColorPreview());
+        this.confirmBrightnessBtn.addEventListener('click', () => this.confirmBrightness());
+        this.confirmColorBtn.addEventListener('click', () => this.confirmColor());
         this.sendMorseBtn.addEventListener('click', () => this.startMorseCode());
     }
 
@@ -98,15 +103,18 @@ class LightbulbController {
         this.updateDisplay();
     }
 
-    async setBrightness(value) {
-        this.brightness = parseInt(value);
-        if (this.brightnessValue) {
-            this.brightnessValue.textContent = `${this.brightness}%`;
+    async confirmBrightness() {
+        const value = parseInt(this.brightnessInput.value);
+        if (isNaN(value) || value < 0 || value > 100) {
+            alert('Bitte geben Sie einen gültigen Helligkeitswert zwischen 0 und 100 ein.');
+            return;
         }
+        
+        this.brightness = value;
         
         try {
             await this.apiCall('/brightness', { value: this.brightness });
-            console.log(`Helligkeit gesetzt auf: ${this.brightness}% (API)`);
+            console.log(`Helligkeit bestätigt: ${this.brightness}% (API)`);
         } catch (error) {
             console.error('Fehler beim Setzen der Helligkeit:', error);
         }
@@ -114,34 +122,20 @@ class LightbulbController {
         this.updateDisplay();
     }
 
-    async setHue(value) {
-        this.hue = parseInt(value);
-        if (this.hueValue) {
-            this.hueValue.textContent = `${this.hue}°`;
+    async confirmColor() {
+        const hue = parseInt(this.hueInput.value) || 0;
+        const saturation = parseInt(this.saturationInput.value) || 0;
+        const lightness = parseInt(this.lightnessInput.value) || 50;
+        
+        if (hue < 0 || hue > 360 || saturation < 0 || saturation > 100 || lightness < 0 || lightness > 100) {
+            alert('Bitte geben Sie gültige Werte ein:\nFarbton: 0-360°\nSättigung: 0-100%\nFarb-Helligkeit: 0-100%');
+            return;
         }
-        await this.updateColor();
-        console.log(`Farbton gesetzt auf: ${this.hue}° (API)`);
-    }
-
-    async setSaturation(value) {
-        this.saturation = parseInt(value);
-        if (this.saturationValue) {
-            this.saturationValue.textContent = `${this.saturation}%`;
-        }
-        await this.updateColor();
-        console.log(`Sättigung gesetzt auf: ${this.saturation}% (API)`);
-    }
-
-    async setLightness(value) {
-        this.lightness = parseInt(value);
-        if (this.lightnessValue) {
-            this.lightnessValue.textContent = `${this.lightness}%`;
-        }
-        await this.updateColor();
-        console.log(`Farb-Helligkeit gesetzt auf: ${this.lightness}% (API)`);
-    }
-
-    async updateColor() {
+        
+        this.hue = hue;
+        this.saturation = saturation;
+        this.lightness = lightness;
+        
         const colorValue = {
             hue: this.hue,
             saturation: this.saturation,
@@ -150,10 +144,58 @@ class LightbulbController {
         
         try {
             await this.apiCall('/color', { value: colorValue });
+            console.log(`Farbe bestätigt: HSL(${this.hue}, ${this.saturation}%, ${this.lightness}%) (API)`);
         } catch (error) {
             console.error('Fehler beim Setzen der Farbe:', error);
         }
         
+        this.updateDisplay();
+    }
+
+    updateColorPreview() {
+        const hue = parseInt(this.hueInput.value) || 0;
+        const saturation = parseInt(this.saturationInput.value) || 0;
+        const lightness = parseInt(this.lightnessInput.value) || 50;
+        
+        const hslColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        this.colorPreview.style.backgroundColor = hslColor;
+    }
+
+    updateLocalDisplay() {
+        // Lokale Anzeige ohne API-Call aktualisieren
+        const brightness = parseInt(this.brightnessInput.value) || 0;
+        if (this.isOn && brightness >= 0 && brightness <= 100) {
+            const actualLightness = (this.lightness * brightness) / 100;
+            const color = `hsl(${this.hue}, ${this.saturation}%, ${actualLightness}%)`;
+            const glowColor = `hsl(${this.hue}, ${this.saturation}%, ${Math.min(actualLightness + 20, 90)}%)`;
+            
+            const bulb = this.lightbulb.querySelector('.bulb');
+            bulb.style.background = color;
+            bulb.style.boxShadow = `0 0 ${brightness/2}px ${glowColor}`;
+        }
+    }
+
+    async setBrightness(value) {
+        this.brightness = parseInt(value);
+        this.updateDisplay();
+    }
+
+    setHue(value) {
+        this.hue = parseInt(value);
+        this.updateDisplay();
+    }
+
+    setSaturation(value) {
+        this.saturation = parseInt(value);
+        this.updateDisplay();
+    }
+
+    setLightness(value) {
+        this.lightness = parseInt(value);
+        this.updateDisplay();
+    }
+
+    async updateColor() {
         this.updateDisplay();
     }
 
@@ -197,5 +239,6 @@ class LightbulbController {
 
 // Initialisiere den Controller wenn die Seite geladen ist
 document.addEventListener('DOMContentLoaded', () => {
-    new LightbulbController();
+    const controller = new LightbulbController();
+    controller.updateColorPreview();
 });
