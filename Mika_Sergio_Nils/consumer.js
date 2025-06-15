@@ -59,7 +59,6 @@ async function consumeLampCommands() {
           channel.ack(msg);
           return;
         }
-
         switch (cmd.command) {
           case 'on':
             lampState.poweredOn = true;
@@ -77,6 +76,7 @@ async function consumeLampCommands() {
               cmd.value >= 0 &&
               cmd.value <= 100
             ) {
+              
               lampState.brightness = cmd.value;
               await device.setBrightness(cmd.value);
               console.log(`Lamp brightness set to ${cmd.value}`);
@@ -85,8 +85,10 @@ async function consumeLampCommands() {
             }
             break;
           case 'color':
+            lampState.poweredOn = true;
             lampState.color = cmd.value;
-            await device.setColour(cmd.value);
+            console.log('color', cmd.value.hue, cmd.value.saturation, cmd.value.lightness)
+            await device.setHSL(cmd.value.hue, cmd.value.saturation, cmd.value.lightness);
             console.log(`Lamp color set to ${cmd.value}`);
             break;
           case 'morse':
